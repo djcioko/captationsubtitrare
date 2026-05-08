@@ -3,36 +3,49 @@ import moviepy.editor as mp
 import whisper
 import os
 
-st.set_page_config(page_title="Santier Captions AI", layout="centered")
+# Configurare pagină
+st.set_page_config(page_title="Santier Captions AI", page_icon="🏗️")
 
 st.title("🏗️ Santier Captions - Subtitrare Automată")
-st.write("Încarcă clipul de pe șantier și lasă AI-ul să facă treaba.")
+st.write("Încarcă filmarea de pe șantier și generăm transcrierea.")
 
-# 1. Încărcare fișier
-uploaded_file = st.file_uploader("Alege un video (mp4, mov)", type=['mp4', 'mov', 'avi'])
+# 1. Upload fișier
+uploaded_file = st.file_uploader("Încarcă video (MP4, MOV)", type=['mp4', 'mov', 'avi'])
 
 if uploaded_file is not None:
-    # Salvăm fișierul temporar
-    with open("temp_video.mp4", "wb") as f:
-        f.write(uploaded_file.read())
+    # Salvăm fișierul pe disc pentru a putea fi citit de Whisper/MoviePy
+    video_path = "temp_video.mp4"
+    with open(video_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
     
-    st.video("temp_video.mp4")
+    st.video(video_path)
 
-    if st.button("Generează Subtitrări"):
-        with st.spinner("👷 Se lucrează... Transcriem audio-ul..."):
-            
-            # 2. Încărcăm modelul Whisper (Base e rapid și bun pentru 1 min)
-            model = whisper.load_model("base")
-            
-            # 3. Transcriem
-            result = model.transcribe("temp_video.mp4", language="ro")
-            
-            st.success("Transcrierea e gata!")
-            
-            # Afișăm textul extras pentru verificare
-            for segment in result['segments']:
-                st.write(f"[{segment['start']}s]: {segment['text']}")
+    if st.button("🚀 Începe procesarea"):
+        with st.spinner("👷 Se încarcă modelul AI și se procesează audio..."):
+            try:
+                # 2. Transcrierea cu Whisper
+                # Folosim modelul 'tiny' sau 'base' pentru viteză pe Streamlit Cloud
+                model = whisper.load_model("base")
+                result = model.transcribe(video_path, language="ro")
+                
+                st.success("✅ Transcrierea este gata!")
+                
+                # 3. Afișare text pe ecran
+                st.subheader("📝 Text extras:")
+                full_text = ""
+                for segment in result['segments']:
+                    timestamp = f"{int(segment['start'])}s - {int(segment['end'])}s"
+                    st.write(f"**{timestamp}**: {segment['text']}")
+                    full_text += f"{segment['text']} "
+                
+                # Opțiune de download text
+                st.download_button("Descarcă Transcrierea (TXT)", full_text, file_name="subtitrare_santier.txt")
 
-            # NOTĂ: Pentru a "lipi" subtitrarea pe video (Hardcode) 
-            # e nevoie de librăria ImageMagick instalată pe server/PC.
-            st.info("Următorul pas: Exportul video cu textul aplicat stilizat.")
+                st.info("💡 Pentru a lipi textul direct pe video cu stil 'influencer', avem nevoie de ImageMagick configurat. Momentan ai textul sincronizat!")
+
+            except Exception as e:
+                st.error(f"A apărut o eroare: {e}")
+
+# Curățenie (opțional)
+if os.path.exists("temp_video.mp4") and uploaded_file is None:
+    os.remove("temp_video.mp4")
