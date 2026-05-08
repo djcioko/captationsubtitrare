@@ -1,7 +1,4 @@
-streamlit
-
-openai-whisper
-
 moviepy
-
+streamlit
+openai-whisper
 torch
